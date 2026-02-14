@@ -1,0 +1,30 @@
+services:
+  agent-macos:
+    build: .
+    container_name: spa-agent
+    profiles: ["macos"]
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen3-coder:14b-16k
+      - REPO_PATH=/data/daily-spa-apps
+    volumes:
+      - spa-data:/data
+      - ./templates:/app/templates
+      - ./config:/app/config
+
+  agent-linux:
+    build: .
+    container_name: spa-agent
+    profiles: ["linux"]
+    network_mode: host
+    environment:
+      - OLLAMA_URL=http://localhost:11434
+      - OLLAMA_MODEL=qwen3-coder:14b-16k
+      - REPO_PATH=/data/daily-spa-apps
+    volumes:
+      - spa-data:/data
+      - ./templates:/app/templates
+      - ./config:/app/config
+
+volumes:
+  spa-data:

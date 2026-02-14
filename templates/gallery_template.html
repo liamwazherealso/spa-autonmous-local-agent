@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily SPA Gallery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 1rem 2rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-bottom: 2px solid #e94560;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #e94560, #0f3460, #e94560);
+            background-size: 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer { 50% { background-position: 100% 0; } }
+
+        header p {
+            margin-top: 0.5rem;
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .filters {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 1.5rem 1rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .filter-btn {
+            padding: 0.4rem 1rem;
+            border: 1px solid #333;
+            border-radius: 20px;
+            background: transparent;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #e94560;
+            border-color: #e94560;
+            color: #fff;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem 2rem 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #1a1a2e;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #252540;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.15);
+        }
+
+        .card-body { padding: 1.25rem; }
+
+        .card-body h2 {
+            font-size: 1.15rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .card-body p {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            background: #252540;
+            color: #e94560;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .date { font-size: 0.8rem; color: #555; }
+
+        .launch-link {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.5rem 1.2rem;
+            background: linear-gradient(135deg, #e94560, #c23152);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            transition: opacity 0.2s;
+        }
+
+        .launch-link:hover { opacity: 0.85; }
+
+        .empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 640px) {
+            header h1 { font-size: 1.8rem; }
+            .gallery { padding: 1rem; gap: 1rem; }
+            .gallery { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Daily SPA Gallery</h1>
+        <p>Auto-generated single-page applications, one per day</p>
+    </header>
+
+    {% if categories %}
+    <nav class="filters">
+        <button class="filter-btn active" data-category="all">All</button>
+        {% for cat in categories %}
+        <button class="filter-btn" data-category="{{ cat }}">{{ cat | capitalize }}</button>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    <main class="gallery">
+        {% if apps %}
+            {% for app in apps %}
+            <article class="card" data-category="{{ app.category }}">
+                <div class="card-body">
+                    <h2>{{ app.title }}</h2>
+                    <p>{{ app.description }}</p>
+                    <div class="card-meta">
+                        <span class="badge">{{ app.category }}</span>
+                        <span class="date">{{ app.date }}</span>
+                    </div>
+                    <a href="{{ app.dir_name }}/index.html" class="launch-link">Launch App</a>
+                </div>
+            </article>
+            {% endfor %}
+        {% else %}
+            <div class="empty">No apps generated yet. Check back soon!</div>
+        {% endif %}
+    </main>
+
+    <script>
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const cat = btn.dataset.category;
+                document.querySelectorAll('.card').forEach(card => {
+                    card.style.display = (cat === 'all' || card.dataset.category === cat) ? '' : 'none';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+ollama:
+  url: "http://host.docker.internal:11434"
+  model: "qwen3-coder:14b-16k"
+  timeout: 300
+
+schedule:
+  time: "03:00"
+  timezone: "UTC"
+
+git:
+  author_name: "SPA Agent"
+  author_email: "spa-agent@autonomous.dev"
+  auto_push: false
+  repo_path: "/data/daily-spa-apps"
+
+generation:
+  max_retries: 3
+  temperature: 0.7
+  temperature_increment: 0.1
+
+categories:
+  - "game"
+  - "tool"
+  - "visualization"
+  - "animation"
+  - "productivity"
+  - "educational"
+  - "creative"
+  - "music"
+  - "simulation"
+  - "puzzle"
