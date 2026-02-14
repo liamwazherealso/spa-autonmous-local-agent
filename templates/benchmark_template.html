@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark - Daily SPA Gallery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 1rem 2rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-bottom: 2px solid #e94560;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            color: #fff;
+        }
+
+        header p {
+            margin-top: 0.5rem;
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        nav {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        nav a {
+            color: #e94560;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        nav a:hover { text-decoration: underline; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead th {
+            background: #1a1a2e;
+            color: #e94560;
+            padding: 0.75rem 0.6rem;
+            text-align: left;
+            border-bottom: 2px solid #e94560;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        thead th:hover { color: #fff; }
+
+        thead th .sort-arrow { margin-left: 0.3rem; font-size: 0.7rem; }
+
+        tbody tr {
+            border-bottom: 1px solid #252540;
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: #1a1a2e; }
+
+        tbody td {
+            padding: 0.65rem 0.6rem;
+            white-space: nowrap;
+        }
+
+        .app-link {
+            color: #6fc3df;
+            text-decoration: none;
+        }
+
+        .app-link:hover { text-decoration: underline; }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            background: #252540;
+            color: #e94560;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .num { font-variant-numeric: tabular-nums; }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #1a1a2e;
+            border: 1px solid #252540;
+            border-radius: 10px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.3rem;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 3rem;
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.8rem; }
+            .container { padding: 1rem 0.5rem; }
+            table { font-size: 0.8rem; }
+            thead th, tbody td { padding: 0.5rem 0.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Generation Benchmarks</h1>
+        <p>Performance data for each auto-generated SPA</p>
+    </header>
+
+    <nav><a href="index.html">&larr; Back to Gallery</a></nav>
+
+    <div class="container">
+        {% set benchmarked = apps | selectattr("benchmark", "defined") | list %}
+
+        {% if benchmarked %}
+        <div class="summary">
+            <div class="stat-card">
+                <div class="value">{{ benchmarked | length }}</div>
+                <div class="label">Total Apps</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">
+                    {{ "%.0f" | format(benchmarked | map(attribute="benchmark.total_seconds") | select("number") | list | sum / (benchmarked | map(attribute="benchmark.total_seconds") | select("number") | list | length or 1)) }}s
+                </div>
+                <div class="label">Avg Generation Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">
+                    {{ "%.0f" | format(benchmarked | map(attribute="benchmark.output_bytes") | select("number") | list | sum / 1024) }}KB
+                </div>
+                <div class="label">Total Output</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">
+                    {{ benchmarked | map(attribute="benchmark.model") | first | default("—") }}
+                </div>
+                <div class="label">Model</div>
+            </div>
+        </div>
+
+        <table id="benchmark-table">
+            <thead>
+                <tr>
+                    <th data-sort="string">Date <span class="sort-arrow"></span></th>
+                    <th data-sort="string">App <span class="sort-arrow"></span></th>
+                    <th data-sort="string">Category <span class="sort-arrow"></span></th>
+                    <th data-sort="string">Model <span class="sort-arrow"></span></th>
+                    <th data-sort="string">Params <span class="sort-arrow"></span></th>
+                    <th data-sort="string">Quant <span class="sort-arrow"></span></th>
+                    <th data-sort="number">Plan (s) <span class="sort-arrow"></span></th>
+                    <th data-sort="number">Code (s) <span class="sort-arrow"></span></th>
+                    <th data-sort="number">Total (s) <span class="sort-arrow"></span></th>
+                    <th data-sort="number">Size (KB) <span class="sort-arrow"></span></th>
+                    <th data-sort="number">Attempt <span class="sort-arrow"></span></th>
+                    <th data-sort="string">OS / Arch <span class="sort-arrow"></span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in benchmarked %}
+                {% set b = app.benchmark %}
+                <tr>
+                    <td>{{ app.date }}</td>
+                    <td><a href="{{ app.dir_name }}/index.html" class="app-link">{{ app.title }}</a></td>
+                    <td><span class="badge">{{ app.category }}</span></td>
+                    <td>{{ b.model | default("—") }}</td>
+                    <td>{{ b.parameter_size | default("—") }}</td>
+                    <td>{{ b.quantization | default("—") }}</td>
+                    <td class="num">{{ b.phase1_seconds | default("—") }}</td>
+                    <td class="num">{{ b.phase2_seconds | default("—") }}</td>
+                    <td class="num">{{ b.total_seconds | default("—") }}</td>
+                    <td class="num">{{ "%.1f" | format(b.output_bytes / 1024) if b.output_bytes else "—" }}</td>
+                    <td class="num">{{ b.attempt | default("—") }}</td>
+                    <td>{{ b.os | default("—") }} / {{ b.arch | default("—") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">No benchmark data available yet.</div>
+        {% endif %}
+    </div>
+
+    <script>
+        document.querySelectorAll('#benchmark-table thead th').forEach((th, idx) => {
+            let asc = true;
+            th.addEventListener('click', () => {
+                const tbody = document.querySelector('#benchmark-table tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const type = th.dataset.sort;
+                rows.sort((a, b) => {
+                    let va = a.children[idx].textContent.trim();
+                    let vb = b.children[idx].textContent.trim();
+                    if (type === 'number') {
+                        va = parseFloat(va) || 0;
+                        vb = parseFloat(vb) || 0;
+                        return asc ? va - vb : vb - va;
+                    }
+                    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+                });
+                rows.forEach(r => tbody.appendChild(r));
+                // Update arrows
+                document.querySelectorAll('.sort-arrow').forEach(s => s.textContent = '');
+                th.querySelector('.sort-arrow').textContent = asc ? ' ▲' : ' ▼';
+                asc = !asc;
+            });
+        });
+    </script>
+</body>
+</html>

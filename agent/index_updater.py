@@ -30,18 +30,28 @@ def scan_apps(repo_path: str) -> list[dict]:
 
 
 def update_index(repo_path: str, template_dir: str = "templates") -> None:
-    """Regenerate the gallery index.html from all app metadata."""
+    """Regenerate the gallery index.html and benchmark.html from all app metadata."""
     apps = scan_apps(repo_path)
 
     env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
-    template = env.get_template("gallery_template.html")
 
+    # Gallery page
+    gallery_template = env.get_template("gallery_template.html")
     categories = sorted({app.get("category", "other") for app in apps})
-
-    html = template.render(apps=apps, categories=categories)
+    gallery_html = gallery_template.render(apps=apps, categories=categories)
 
     index_path = Path(repo_path) / "index.html"
     with open(index_path, "w") as f:
-        f.write(html)
+        f.write(gallery_html)
 
     logger.info("Updated gallery index with %d apps", len(apps))
+
+    # Benchmark page
+    benchmark_template = env.get_template("benchmark_template.html")
+    benchmark_html = benchmark_template.render(apps=apps)
+
+    benchmark_path = Path(repo_path) / "benchmark.html"
+    with open(benchmark_path, "w") as f:
+        f.write(benchmark_html)
+
+    logger.info("Updated benchmark page")

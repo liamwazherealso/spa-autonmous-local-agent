@@ -43,7 +43,7 @@ def commit_app(config: GitConfig, app_dir_name: str, app_title: str) -> bool:
     repo = config.repo_path
 
     # Stage the app directory and index
-    result = _run_git(["add", app_dir_name, "index.html"], cwd=repo)
+    result = _run_git(["add", app_dir_name, "index.html", "benchmark.html"], cwd=repo)
     if result.returncode != 0:
         logger.error("git add failed: %s", result.stderr)
         return False

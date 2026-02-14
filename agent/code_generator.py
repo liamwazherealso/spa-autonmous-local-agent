@@ -2,6 +2,7 @@
 
 import logging
 import re
+import time
 
 import requests
 
@@ -53,13 +54,13 @@ def _extract_html(raw: str) -> str:
     return "\n".join(lines[start:]).strip()
 
 
-def generate_code(config: AppConfig, idea: dict, temperature: float) -> str:
+def generate_code(config: AppConfig, idea: dict, temperature: float) -> tuple[str, dict]:
     """Generate a complete SPA using two-phase prompting.
 
-    Phase 1: Architecture plan (with thinking enabled)
-    Phase 2: Full HTML generation (with thinking enabled)
+    Phase 1: Architecture plan
+    Phase 2: Full HTML generation
 
-    Returns the generated HTML string.
+    Returns (html_string, benchmark_dict).
     """
     title = idea["title"]
     description = idea["description"]
@@ -88,7 +89,9 @@ Outline:
 Be specific and detailed. This plan will guide the code generation."""
 
     logger.info("Phase 1: Generating architecture plan for '%s'...", title)
+    t0 = time.monotonic()
     plan = _query_ollama(config, plan_prompt, temperature=temperature)
+    phase1_duration = time.monotonic() - t0
     logger.debug("Architecture plan:\n%s", plan[:500])
 
     # Phase 2: Full code generation
@@ -115,8 +118,20 @@ CRITICAL REQUIREMENTS:
 Output ONLY the complete HTML code inside a ```html code block. No explanations before or after."""
 
     logger.info("Phase 2: Generating full code for '%s'...", title)
+    t1 = time.monotonic()
     raw = _query_ollama(config, code_prompt, temperature=temperature)
+    phase2_duration = time.monotonic() - t1
 
     html = _extract_html(raw)
-    logger.info("Generated %d bytes of HTML", len(html))
-    return html
+    total_duration = phase1_duration + phase2_duration
+    logger.info("Generated %d bytes of HTML in %.1fs (plan: %.1fs, code: %.1fs)",
+                len(html), total_duration, phase1_duration, phase2_duration)
+
+    benchmark = {
+        "phase1_seconds": round(phase1_duration, 1),
+        "phase2_seconds": round(phase2_duration, 1),
+        "total_seconds": round(total_duration, 1),
+        "output_bytes": len(html),
+        "temperature": temperature,
+    }
+    return html, benchmark

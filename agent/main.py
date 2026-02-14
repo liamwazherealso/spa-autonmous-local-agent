@@ -3,11 +3,14 @@
 import argparse
 import json
 import logging
+import os
+import platform
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
 import schedule
 
 from agent.code_generator import generate_code
@@ -25,6 +28,48 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _get_hardware_info(config: AppConfig) -> dict:
+    """Collect hardware and model info from the host via Ollama."""
+    info = {
+        "os": platform.system(),
+        "arch": platform.machine(),
+        "model_name": config.ollama.model,
+    }
+
+    # Query Ollama for model details (includes GPU/parameter info)
+    try:
+        resp = requests.post(
+            f"{config.ollama.url}/api/show",
+            json={"name": config.ollama.model},
+            timeout=10,
+        )
+        if resp.ok:
+            data = resp.json()
+            details = data.get("details", {})
+            info["parameter_size"] = details.get("parameter_size", "unknown")
+            info["quantization"] = details.get("quantization_level", "unknown")
+            info["family"] = details.get("family", "unknown")
+    except Exception:
+        pass
+
+    # Try to get GPU info from Ollama's /api/ps (running models)
+    try:
+        resp = requests.get(f"{config.ollama.url}/api/ps", timeout=10)
+        if resp.ok:
+            models = resp.json().get("models", [])
+            for m in models:
+                if config.ollama.model in m.get("name", ""):
+                    info["gpu_layers"] = m.get("details", {}).get("gpu_layers", "unknown")
+                    size_vram = m.get("size_vram", 0)
+                    if size_vram:
+                        info["vram_gb"] = round(size_vram / (1024**3), 1)
+                    break
+    except Exception:
+        pass
+
+    return info
+
+
 def run_daily_cycle(config: AppConfig) -> bool:
     """Execute one full generation cycle. Returns True on success."""
     logger.info("=== Starting daily generation cycle ===")
@@ -38,13 +83,15 @@ def run_daily_cycle(config: AppConfig) -> bool:
 
     # Generate and validate code with retries
     html = None
+    benchmark = None
+    attempt_used = 0
     for attempt in range(1, config.generation.max_retries + 1):
         temp = config.generation.temperature + (attempt - 1) * config.generation.temperature_increment
         logger.info("Generation attempt %d/%d (temperature=%.2f)",
                      attempt, config.generation.max_retries, temp)
 
         try:
-            html = generate_code(config, idea, temperature=temp)
+            html, benchmark = generate_code(config, idea, temperature=temp)
         except Exception as e:
             logger.error("Code generation failed: %s", e)
             continue
@@ -52,10 +99,12 @@ def run_daily_cycle(config: AppConfig) -> bool:
         is_valid, errors = validate_html(html)
         if is_valid:
             logger.info("Validation passed on attempt %d", attempt)
+            attempt_used = attempt
             break
         else:
             logger.warning("Validation failed: %s", "; ".join(errors))
             html = None
+            benchmark = None
 
     if html is None:
         logger.error("All %d attempts failed for '%s'", config.generation.max_retries, idea["title"])
@@ -69,13 +118,27 @@ def run_daily_cycle(config: AppConfig) -> bool:
     with open(app_dir / "index.html", "w") as f:
         f.write(html)
 
-    # Write metadata
+    # Collect hardware/model info
+    hw_info = _get_hardware_info(config)
+
+    # Write metadata with benchmark data
     metadata = {
         "title": idea["title"],
         "description": idea["description"],
         "category": idea["category"],
         "slug": idea["slug"],
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "benchmark": {
+            **(benchmark or {}),
+            "attempt": attempt_used,
+            "model": hw_info.get("model_name", config.ollama.model),
+            "parameter_size": hw_info.get("parameter_size", "unknown"),
+            "quantization": hw_info.get("quantization", "unknown"),
+            "family": hw_info.get("family", "unknown"),
+            "os": hw_info.get("os", "unknown"),
+            "arch": hw_info.get("arch", "unknown"),
+            "vram_gb": hw_info.get("vram_gb"),
+        },
     }
     with open(app_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
