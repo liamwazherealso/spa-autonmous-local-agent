@@ -138,6 +138,7 @@ def run_daily_cycle(config: AppConfig) -> bool:
             "os": hw_info.get("os", "unknown"),
             "arch": hw_info.get("arch", "unknown"),
             "vram_gb": hw_info.get("vram_gb"),
+            "compute": os.environ.get("COMPUTE_INFO", "unknown"),
         },
     }
     with open(app_dir / "metadata.json", "w") as f:
